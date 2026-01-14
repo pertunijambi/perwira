@@ -349,10 +349,17 @@ function renderOrderForm() {
     // Formulir HTML pemesanan
     const orderFormHTML = `
         <h2>Form Pemesanan</h2>
-        <label for="nama">Nama: </label><input type="text" id="nama" readonly><br>
-        <label for="alamat">Alamat: </label><input type="text" id="alamat" readonly><br>
-        <label for="nomor_telepon">Nomor Telepon: </label><input type="text" id="nomor_telepon" readonly><br>
-        <label for="email">Email: </label><input type="email" id="email" readonly><br>
+<label>Nama:</label>
+<input type="text" id="nama" placeholder="Masukkan nama"><br>
+
+<label>Alamat:</label>
+<input type="text" id="alamat" placeholder="Masukkan alamat"><br>
+
+<label>Nomor Telepon:</label>
+<input type="text" id="nomor_telepon" placeholder="08xxxxxxxxxx"><br>
+
+<label>Email:</label>
+<input type="email" id="email" placeholder="email@email.com"><br>
         <label for="terapis">Terapis: </label><textarea id="terapis" readonly></textarea><br>
         <label for="biaya">Biaya: </label><textarea id="biaya" readonly></textarea><br>
         <button type="button" onclick="submitOrder()">Kirim Pesanan ke Panti</button>
@@ -361,20 +368,6 @@ function renderOrderForm() {
     // Tambahkan formulir di bawah tombol "Pesan"
     const pesanButton = document.querySelector('.tombol-pesan');
     pesanButton.insertAdjacentHTML('afterend', orderFormHTML);
-
-    // Ambil data pengguna yang sedang login
-    const user = firebase.auth().currentUser;
-    if (user) {
-        const userRef = db.ref('pertuni/perpustakaan/melihat/awas/' + user.uid);
-        userRef.once('value').then(snapshot => {
-            const userData = snapshot.val();
-            // Isi data pengguna pada form
-            document.getElementById('nama').value = userData.nama;
-            document.getElementById('alamat').value = userData.alamat;
-            document.getElementById('nomor_telepon').value = userData.nomor_telepon;
-            document.getElementById('email').value = userData.email;
-        });
-    }
 
     // Update the form fields dynamically based on selected "terapis" and "biaya"
     let selectedTerapis = [];
@@ -432,7 +425,6 @@ document.querySelector('#data-container').addEventListener('change', updateOrder
 
 // Fungsi untuk mengirimkan data pemesanan ke Firebase
 function submitOrder() {
-    const user = firebase.auth().currentUser;
     const namaPanti = filteredData[currentIndex].namaPanti; // Ambil namaPanti dari data yang sedang ditampilkan
     const nama = document.getElementById('nama').value;
     const alamat = document.getElementById('alamat').value;
@@ -502,3 +494,4 @@ Terimakasih.
     <button class="back-button" onclick="window.location.href='index.html'">Kembali</button>
 </body>
 </html>
+
