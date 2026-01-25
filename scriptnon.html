@@ -1,0 +1,337 @@
+const container = document.querySelector(".container");
+
+firebase.auth().onAuthStateChanged((user) => {
+    if (user) {
+        setUserOnlineStatus(user.uid, true); // Set status to online
+        Dashboard(user);
+
+        // Set status to offline when the window is closed or refreshed
+        window.addEventListener('beforeunload', () => {
+            setUserOnlineStatus(user.uid, false);
+        });
+    } else {
+        Landing();
+    }
+});
+
+function setUserOnlineStatus(uid, isOnline) {
+    const userRef = firebase.database().ref('pertuni/perpustakaan/pengguna/' + uid + '/status');
+    const lastOnline = new Date().toLocaleString();
+    userRef.set({
+        online: isOnline,
+        lastOnline: isOnline ? "Online" : lastOnline
+    });
+}
+
+const Landing = () => {
+    const element = document.createElement("div");
+    element.classList.add("Landing");
+
+    // Show register and login buttons initially
+    element.innerHTML = `
+        <div class="tombolan">
+            <button data-button="register">Register</button>
+            <button data-button="login">Login</button>
+        </div>
+        <div class="inputan"></div>
+    `;
+
+    container.innerHTML = "";
+    container.appendChild(element);
+
+    const registerBtn = element.querySelector(`[data-button="register"]`);
+    const loginBtn = element.querySelector(`[data-button="login"]`);
+
+    // Function to display register form
+    const showRegisterForm = () => {
+        element.querySelector(".inputan").innerHTML = `
+            <label for="nama">Nama Lengkap</label>
+            <input type="text" id="nama" placeholder="Tulis Nama Lengkap" required>
+            <label for="alamat">Alamat</label>
+            <input type="text" id="alamat" placeholder="Tulis Alamat" required>
+            <label for="nomor_telepon">Nomor Telepon</label>
+            <input type="text" id="nomor_telepon" placeholder="Tulis Nomor Telepon" required>
+            <label for="email">Email</label>
+            <input type="email" id="email" placeholder="Tulis Email" required>
+            <label for="password">Password</label>
+            <input type="password" id="password" placeholder="Silahkan masukkan Password yang mudah untuk Anda ingat (minimal 6 karakter)" required>
+            <button data-button="submit-register">Register</button>
+        `;
+
+        // Hide login button when register form is displayed
+        loginBtn.style.display = 'none';
+
+        const submitRegisterBtn = element.querySelector(`[data-button="submit-register"]`);
+        submitRegisterBtn.addEventListener('click', () => {
+            const nama = element.querySelector("#nama").value;
+            const alamat = element.querySelector("#alamat").value;
+            const nomorTelepon = element.querySelector("#nomor_telepon").value;
+            const email = element.querySelector("#email").value;
+            const password = element.querySelector("#password").value;
+
+            if (nama && alamat && nomorTelepon && email && password) { // Validate non-empty input
+                firebase.auth().createUserWithEmailAndPassword(email, password)
+                    .then((cred) => {
+                        const userData = {
+                            nama,
+                            alamat,
+                            nomor_telepon: nomorTelepon,
+                            email,
+                            uid: cred.user.uid
+                        };
+                        const userRef = firebase.database().ref('pertuni/perpustakaan/pengguna/' + cred.user.uid);
+                        return userRef.set(userData);
+                    })
+                    .then(() => {
+                        alert(`Terimakasih, Anda Berhasil Membuat Akun`);
+                    })
+                    .catch((error) => {
+                        alert("Error: " + error.message);
+                    });
+            } else {
+                alert("Maaf, Semua Form harus diisi.");
+            }
+        });
+    };
+
+    // Function to display login form
+    const showLoginForm = () => {
+        element.querySelector(".inputan").innerHTML = `
+            <label for="email">Email</label>
+            <input type="email" id="email" placeholder="Tulis Email" required>
+            <label for="password">Password</label>
+            <input type="password" id="password" placeholder="Tulis Password" required>
+            <button data-button="submit-login">Login</button>
+            <button data-button="forgot-password">Forgot Password</button>
+        `;
+
+        // Hide register button when login form is displayed
+        registerBtn.style.display = 'none';
+
+        const submitLoginBtn = element.querySelector(`[data-button="submit-login"]`);
+        const forgotPasswordBtn = element.querySelector(`[data-button="forgot-password"]`);
+
+        submitLoginBtn.addEventListener('click', () => {
+            const email = element.querySelector("#email").value;
+            const password = element.querySelector("#password").value;
+
+            if (email && password) {
+                firebase.auth().signInWithEmailAndPassword(email, password)
+                    .then(() => {
+                        alert(`Selamat Datang Akun: ${firebase.auth().currentUser.uid}`);
+                    })
+                    .catch((error) => {
+                        alert("Error login: " + error.message);
+                    });
+            } else {
+                alert("Email dan Password harus diisi.");
+            }
+        });
+
+        forgotPasswordBtn.addEventListener('click', () => {
+            const email = element.querySelector("#email").value;
+
+            if (email) {
+                firebase.auth().sendPasswordResetEmail(email)
+                    .then(() => {
+                        alert(`Password reset email sent to ${email}`);
+                    })
+                    .catch((error) => {
+                        alert("Error sending reset email: " + error.message);
+                    });
+            } else {
+                alert("Masukkan email untuk mereset password.");
+            }
+        });
+    };
+
+    // Event listener for register and login buttons
+    registerBtn.addEventListener('click', () => {
+        showRegisterForm();
+        loginBtn.style.display = 'none'; // Hide login button
+    });
+
+    loginBtn.addEventListener('click', () => {
+        showLoginForm();
+        registerBtn.style.display = 'none'; // Hide register button
+    });
+};
+
+const Dashboard = (user) => {
+    const userRef = firebase.database().ref('pertuni/perpustakaan/pengguna/' + user.uid);
+
+    userRef.once('value').then((snapshot) => {
+        const userData = snapshot.val();
+
+        const element = document.createElement("div");
+        element.classList.add("Dashboard");
+        element.innerHTML = `
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                margin: 0;
+                padding: 0;
+                background-color: #f4f4f4;
+            }
+            nav {
+                background-color: #333;
+                padding: 10px;
+            }
+            nav ul {
+                list-style: none;
+                margin: 0;
+                padding: 0;
+            }
+            nav ul li {
+                display: inline-block;
+                position: relative;
+            }
+            nav ul li a {
+                color: white;
+                text-decoration: none;
+                padding: 10px 15px;
+                display: block;
+            }
+            nav ul li a:hover {
+                background-color: #555;
+            }
+            .submenu {
+                display: none;
+                background-color: #444;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                width: 200px;
+                z-index: 1;
+            }
+            .submenu li {
+                display: block;
+            }
+            .submenu li a {
+                padding: 10px;
+                background-color: #444;
+            }
+            .submenu li a:hover {
+                background-color: #666;
+            }
+            .active .submenu {
+                display: block;
+            }
+
+            /* Styling for welcome text */
+            .welcome-text {
+                font-size: 24px;
+                text-align: center;
+                margin-top: 50px;
+                color: #003366; /* Dark Blue */
+                opacity: 0;
+                animation: fadeIn 3s forwards;
+            }
+
+            @keyframes fadeIn {
+                0% {
+                    opacity: 0;
+                    transform: translateY(-30px);
+                }
+                100% {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+
+            /* Ensure responsiveness */
+            img.img-center {
+                width: 100%;
+                height: auto;
+                display: block;
+                margin: 0 auto;
+            }
+
+            @media (max-width: 768px) {
+                .welcome-text {
+                    font-size: 20px;
+                }
+            }
+
+            @media (max-width: 480px) {
+                .welcome-text {
+                    font-size: 18px;
+                }
+            }
+        </style>
+        <img class="img-center" src="pertuni.jpg" alt="Logo Pertuni">
+        
+        <header>
+            <div class="welcome-text">
+                Selamat Datang Di Web Sahabat Pertuni Jambi
+            </div>
+            <nav>
+                <ul>
+                    <li id="menuPerwira">
+                        <a href="#">Perwira</a>
+                        <ul class="submenu">
+                            <li><a href="mengenal perwira.html">Mengenal lebih dekat Perwira</a></li>
+                            <li><a href="perwira.html">Pertuni Wirausaha</a></li>
+                            <li><a href="penilaian.html">Input Penilaian</a></li>
+                        </ul>
+                    </li>
+                    <li id="menuPPN">
+                        <a href="#">PPN</a>
+                        <ul class="submenu">
+                            <li><a href="mengenal ppn.html">Mengenal lebih dekat PPN</a></li>
+                            <li><a href="ppn.html">Pertuni Panti Netra</a></li>
+                        </ul>
+                    </li>
+                    <li id="menuTentangKami">
+                        <a href="#">Tentang Kami</a>
+                        <ul class="submenu">
+                            <li><a href="sosialmedia.html">Sosial media</a></li>
+                            <li><a href="tasbih.html">Tasbih digital Dwitra</a></li>
+                            <li><a href="karya anggota.html">Karya Anggota</a></li>
+                            <li><a href="member update.html">Update Data Pengguna</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </nav>
+        </header>
+
+        <div class="content">
+            <div>Nama: ${userData.nama}</div>        
+            <div>Email: ${userData.email}</div>
+            <div>UID: ${userData.uid}</div>
+            <button data-button="logout">Logout</button>
+        </div>
+        `;
+
+        container.innerHTML = "";
+        container.appendChild(element);
+
+        const logout = element.querySelector(`[data-button="logout"]`);
+        logout.addEventListener('click', () => {
+            setUserOnlineStatus(user.uid, false);
+            firebase.auth().signOut().then(() => {
+                alert("Terimakasih, Anda Berhasil Logout");
+                Landing();
+            }).catch((err) => alert(err));
+
+        });
+
+        // Menu interactions
+        const menuItems = document.querySelectorAll('nav > ul > li');
+
+        menuItems.forEach(item => {
+            item.addEventListener('click', () => {
+                // Hide all submenus
+                menuItems.forEach(subItem => {
+                    subItem.classList.remove('active');
+                });
+                // Toggle submenu of clicked menu
+                item.classList.toggle('active');
+            });
+        });
+
+    }).catch((error) => {
+        console.error("Error retrieving user data:", error);
+        alert("Gagal mengambil data pengguna: " + error.message);
+    });
+};
